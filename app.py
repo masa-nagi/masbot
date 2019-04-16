@@ -7,6 +7,8 @@ import urllib
 import urllib.request
 import json
 import datetime
+import gzip, urllib
+import io
 
 app = Flask(__name__)
 
@@ -89,8 +91,7 @@ def handle_message(event):
                 return
 
             if line_id > 0:
-                delay_time = tokyu_delay(line_id)
-                message = "遅延証明 : {}分遅れています".format(delay_time)
+                message = tokyu_delay(line_id)
 
             line_bot_api.reply_message(
                 event.reply_token,
@@ -141,7 +142,8 @@ def tokyu_delay(line_id):
     else:
         time_zone="second_half"
 
-    url = 'https://{}/{}/up/{}/{}.json'.format(server, line_id, target_date,time_zone)
+    cert_url = 'https://{}/{}/up/{}/{}.json'.format(server, line_id, target_date,time_zone)
+    delay_url = 'https://tokyu-tid.s3.amazonaws.com/delays.json'
 
     # URIパラメータのデータ 
     #param = {
@@ -150,16 +152,23 @@ def tokyu_delay(line_id):
     #}
 
     # URIパラメータの文字列の作成
-    #paramStr = urllib.urlencode(param)
-    paramStr = ""
+    #param_str = urllib.urlencode(param)
+    param_str = ""
 
     # 読み込むオブジェクトの作成
-    readObj = urllib.request.urlopen(url + paramStr)
+    cert_response = urllib.request.urlopen(cert_url + param_str)
 
-    # webAPIからのJSONを取得
-    response = json.loads(readObj.read())
+    delay_response = urllib.request.urlopen(delay_url + param_str)
+    raw_data = delay_response.read()
+    file_object = io.BytesIO(raw_data)
+    delay_message = gzip.GzipFile(fileobj=file_object).read()
 
-    return response['delay']
+    cert_message = json.loads(cert_response.read())
+
+    response = "遅延証明: 最大{}分の遅れが発生しています\n\n".format(cert_message['delay'])
+    response += str(delay_message)
+
+    return response
 
 if __name__ == "__main__":
     app.run()
