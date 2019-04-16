@@ -27,13 +27,13 @@ def push_message():
     request_message = request.get_data(as_text=True)
 
     if request_message == "morning":
-        messages = TextSendMessage(text=f"こんにちは😁\n\n"
-                                        f"最近はいかがお過ごしでしょうか?")
+        messages = TextSendMessage(text=f"おはよう")
         line_bot_api.push_message(line_user_id, messages=messages)
     elif request_message == "trash":
         message = trash_info()
-        messages = TextSendMessage(text=message)
-        line_bot_api.push_message(line_user_id, messages=messages)
+        if len(message) > 0:
+            messages = TextSendMessage(text=message)
+            line_bot_api.push_message(line_user_id, messages=messages)
 
     return 'OK'
 
