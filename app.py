@@ -3,6 +3,10 @@ from flask import Flask, request, abort
 from linebot import LineBotApi, WebhookHandler
 from linebot.exceptions import InvalidSignatureError
 from linebot.models import MessageEvent, TextMessage, TextSendMessage
+import urllib
+import urllib.request
+import json
+import datetime
 
 app = Flask(__name__)
 
@@ -11,10 +15,27 @@ YOUR_CHANNEL_SECRET = os.environ["YOUR_CHANNEL_SECRET"]
 
 line_bot_api = LineBotApi(YOUR_CHANNEL_ACCESS_TOKEN)
 handler = WebhookHandler(YOUR_CHANNEL_SECRET)
+line_user_id = os.environ["LINE_USER_ID"]
 
 @app.route("/")
 def hello_world():
     return "hello world!"
+
+@app.route("/push", methods=['POST'])
+def push_message():
+
+    request_message = request.get_data(as_text=True)
+
+    if request_message == "morning":
+        messages = TextSendMessage(text=f"こんにちは😁\n\n"
+                                        f"最近はいかがお過ごしでしょうか?")
+        line_bot_api.push_message(line_user_id, messages=messages)
+    elif request_message == "trash":
+        message = trash_info()
+        messages = TextSendMessage(text=message)
+        line_bot_api.push_message(line_user_id, messages=messages)
+
+    return 'OK'
 
 @app.route("/webhook", methods=['POST'])
 def webhook():
@@ -48,23 +69,24 @@ def handle_message(event):
                 ]
             )
         #elif (event.message.text == "東横") or (event.message.text == "東横遅延"):
-        elif event.message.text.startswith("電車遅延"):
+        elif event.message.text.startswith("電車遅延") \
+          or event.message.text.startswith("遅延"):
 
             # 路線判定 - 東急線
             if "東横" in event.message.text:
                 line_id = 26001
-            elif "目黒線" in event.message.text:
+            elif "目黒" in event.message.text:
                 line_id = 26002
-            elif "田園都市線" in event.message.text:
+            elif "田園都市" in event.message.text:
                 line_id = 26003
-            elif "大井町線" in event.message.text:
+            elif "大井町" in event.message.text:
                 line_id = 26004
-            elif "池上線" in event.message.text:
+            elif "池上" in event.message.text:
                 line_id = 26005
-            elif "多摩川線" in event.message.text:
+            elif "多摩川" in event.message.text:
                 line_id = 26006
             else:
-                message = "未登録路線です"
+                return
 
             if line_id > 0:
                 delay_time = tokyu_delay(line_id)
@@ -87,11 +109,27 @@ def handle_message(event):
     #    event.reply_token,
     #    TextSendMessage(text=event.message.text))
 
+def trash_info():
+
+    # 0: 月, 1: 火, 2: 水, 3: 木, 4: 金, 5: 土, 6: 日
+    trash_list = {
+        0: 'ビン・缶・ペットボトル',
+        1: '資源ごみ',
+        4: 'プラごみ',
+        5: '資源ごみ',
+    }
+
+    weekday = datetime.datetime.now().weekday()
+
+    if weekday in trash_list:
+        response = '今日は{}の日だよ'.format(trash_list[weekday])
+    else:
+        response = ''
+
+    return response
+
+
 def tokyu_delay(line_id):
-    import urllib
-    import urllib.request
-    import json
-    import datetime
 
     # URIスキーム
     server = 'delay-certificate.tokyuapp.com'
