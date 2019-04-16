@@ -4,11 +4,13 @@ from linebot import LineBotApi, WebhookHandler
 from linebot.exceptions import InvalidSignatureError
 from linebot.models import MessageEvent, TextMessage, TextSendMessage
 import urllib
+import urllib.parse
 import urllib.request
 import json
 import datetime
-import gzip, urllib
+import gzip
 import io
+import requests
 
 app = Flask(__name__)
 
@@ -99,6 +101,16 @@ def handle_message(event):
                     TextSendMessage(text=message),
                 ]
             )
+        elif (event.message.text == "天気"):
+            message = weather_info()
+
+            line_bot_api.reply_message(
+                event.reply_token,
+                [
+                    TextSendMessage(text=message),
+                ]
+            )
+
         else:
             line_bot_api.reply_message(
                 event.reply_token,
@@ -106,9 +118,20 @@ def handle_message(event):
                     TextSendMessage(text="ごめんなさい、何を言っているかわかりません"+ chr(0x100029) + chr(0x100098)),
                 ]
             )
-    #line_bot_api.reply_message(
-    #    event.reply_token,
-    #    TextSendMessage(text=event.message.text))
+
+def weather_info():
+    url = 'http://weather.livedoor.com/forecast/webservice/json/v1?city=140010'
+    api_data = requests.get(url).json()
+
+    response = ''
+    for weather in api_data['forecasts']:
+        weather_date = weather['dateLabel']
+        weather_forecasts = weather['telop']
+        response += weather_date + ':' + weather_forecasts + '\n'
+
+    response += '\n'
+    response += api_data["description"]["text"]
+    return response
 
 def trash_info():
 
