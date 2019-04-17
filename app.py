@@ -78,22 +78,22 @@ def handle_message(event):
 
             # 路線判定 - 東急線
             if "東横" in event.message.text:
-                line_id = 26001
+                line_name = "toyoko"
             elif "目黒" in event.message.text:
-                line_id = 26002
+                line_name = "meguro"
             elif "田園都市" in event.message.text:
-                line_id = 26003
+                line_name = "dento"
             elif "大井町" in event.message.text:
-                line_id = 26004
+                line_name = "oimachi"
             elif "池上" in event.message.text:
-                line_id = 26005
+                line_name = "ikegami"
             elif "多摩川" in event.message.text:
-                line_id = 26006
+                line_name = "tamagawa"
             else:
                 return
 
-            if line_id > 0:
-                message = tokyu_delay(line_id)
+            if len(line_name) > 0:
+                message = tokyu_delay(line_name)
 
             line_bot_api.reply_message(
                 event.reply_token,
@@ -153,7 +153,17 @@ def trash_info():
     return response
 
 
-def tokyu_delay(line_id):
+def tokyu_delay(line_name):
+
+    # 路線ID取得
+    line_id_list = { "toyoko": 26001,
+                     "meguro": 26002,
+                     "dento": 26003,
+                     "oimachi": 26004,
+                     "ikegami": 26005,
+                     "tamagawa": 26006 }
+
+    line_id = line_id_list[line_name]
 
     # URIスキーム
     server = 'delay-certificate.tokyuapp.com'
@@ -184,12 +194,12 @@ def tokyu_delay(line_id):
     delay_response = urllib.request.urlopen(delay_url + param_str)
     raw_data = delay_response.read()
     file_object = io.BytesIO(raw_data)
-    delay_message = gzip.GzipFile(fileobj=file_object).read()
+    delay_message = json.loads(gzip.GzipFile(fileobj=file_object).read())
 
     cert_message = json.loads(cert_response.read())
 
-    response = "遅延証明: 最大{}分の遅れが発生しています\n\n".format(cert_message['delay'])
-    response += str(delay_message)
+    response = "遅延証明: 最大{}分の遅れが発生しています\n".format(cert_message['delay'])
+    response += "最新の遅延情報では{}分の遅れが出ているようです".format(delay_message[line_name])
 
     return response
 
